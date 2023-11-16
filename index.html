@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maximize Volume</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: black;
+            color: #ffffff;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            color: black;
+        }
+
+        #myChart {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Maximize Volume</h1>
+
+        <label for="ladoPapelao">Digite o tamanho da folha de papelão:</label>
+        <input type="number" id="ladoPapelao" placeholder="Tamanho do papelão" step="any">
+
+        <label for="unitChoice">Escolha a unidade (cm/m):</label>
+        <select id="unitChoice">
+            <option value="cm">cm</option>
+            <option value="m">m</option>
+        </select>
+
+        <button onclick="calculateMaxVolume()">Calcular</button>
+        <button onclick="location.reload()">Atualizar Página</button>
+
+        <div id="results"></div>
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <script>
+        let chart;
+
+        function calculateMaxVolume() {
+            const ladoPapelao = parseFloat(document.getElementById("ladoPapelao").value);
+            const unitChoice = document.getElementById("unitChoice").value;
+
+            const conversionFactor = unitChoice === 'cm' ? 0.01 : 1.0;
+
+            function volume(x) {
+                return x * Math.pow((ladoPapelao - 2 * x), 2);
+            }
+
+            function findCriticalPoints() {
+                const criticalPoints = [];
+                for (let x = 0; x <= ladoPapelao / 2; x += 0.01) {
+                    criticalPoints.push(x);
+                }
+                return criticalPoints;
+            }
+
+            function findMaxVolumeSolution(criticalPoints) {
+                let maxVolume = -Infinity;
+                let maxX;
+
+                for (const x of criticalPoints) {
+                    const currentVolume = volume(x);
+                    if (currentVolume > maxVolume) {
+                        maxVolume = currentVolume;
+                        maxX = x;
+                    }
+                }
+
+                return { maxX, maxVolume };
+            }
+
+            const { maxX, maxVolume } = findMaxVolumeSolution(findCriticalPoints());
+
+            const ladoCaixa = (ladoPapelao - 2 * maxX) / conversionFactor;
+            const alturaCaixa = maxX / conversionFactor;
+            const larguraCaixa = ladoCaixa;
+
+            const ladoQuadradoRemovido = 2 * maxX / conversionFactor;
+
+            // Displaying the results
+            const resultsElement = document.getElementById("results");
+            resultsElement.innerHTML = `
+                <p>Dimensões que maximizam o volume:</p>
+                <p>Caixa: Lado = ${ladoCaixa.toFixed(3)} ${unitChoice}, Altura = ${alturaCaixa.toFixed(3)} ${unitChoice}, Largura = ${larguraCaixa.toFixed(3)} ${unitChoice}</p>
+                <p>Quadrado Removido: Lado = ${ladoQuadradoRemovido.toFixed(3)} ${unitChoice}</p>
+                <p>Volume máximo: ${maxVolume.toFixed(3)} ${unitChoice}³</p>
+            `;
+
+            // Plotting the graph
+            function updateChart(maxX, maxVolume, ladoPapelao) {
+                const ctx = document.getElementById('myChart').getContext('2d');
+                const alturaValues = Array.from({ length: 100 }, (_, i) => i * (ladoPapelao / 2) / 100);
+                const volumeValues = alturaValues.map(altura => volume((ladoPapelao - 2 * altura) / 2));
+
+                if (chart) {
+                    chart.destroy();
+                }
+
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: alturaValues,
+                        datasets: [{
+                            label: 'Volume da Caixa',
+                            data: volumeValues,
+                            borderColor: 'blue',
+                            borderWidth: 1,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Altura (m)'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Volume'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Adiciona um ponto vermelho no ponto mais alto
+                const highestPointIndex = volumeValues.indexOf(Math.max(...volumeValues));
+                const highestPoint = {
+                    x: alturaValues[highestPointIndex],
+                    y: Math.max(...volumeValues)
+                };
+
+                chart.data.datasets.push({
+                    label: 'Ponto Mais Alto',
+                    data: [highestPoint],
+                    pointBackgroundColor: 'red',
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    type: 'scatter'
+                });
+
+                chart.update();
+            }
+
+            updateChart(maxX, maxVolume, ladoPapelao);
+        }
+    </script>
+
+</body>
+</html>
